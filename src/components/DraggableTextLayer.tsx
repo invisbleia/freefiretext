@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CharStyle, GlobalStyle, TextLayer } from '../types';
-import { charToCss, DEFAULT_GLOBAL, getCharDisplay, textToChars } from '../types';
+import { charToCss, DEFAULT_GLOBAL, getCharDisplay, rebuildCharsWithExistingStyle, textToChars } from '../types';
 import { useCanvasTransform } from '../hooks/useCanvasTransform';
 import { useContextMenu, usePointerInteraction } from '../hooks/usePointerInteraction';
 import { getCharRangeFromSelection } from '../utils/selection';
@@ -13,13 +13,16 @@ interface Props {
   selection: { start: number; end: number } | null;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
-  onSelectionChange: (start: number, end: number) => void;
+  onDeselect: () => void;
+  onSelectionChange: (range: { start: number; end: number } | null) => void;
   onUpdate: (patch: Partial<TextLayer>) => void;
   onCharsChange: (chars: CharStyle[]) => void;
   onRemove: () => void;
   onDuplicate: () => void;
   onBringForward: () => void;
   onSendBackward: () => void;
+  otherLayers: { id: string; x: number; y: number }[];
+  onSnapChange: (snaps: { x?: number; y?: number } | null) => void;
 }
 
 export function DraggableTextLayer({
@@ -28,6 +31,7 @@ export function DraggableTextLayer({
   selection,
   containerRef,
   onSelect,
+  onDeselect,
   onSelectionChange,
   onUpdate,
   onCharsChange,
@@ -35,101 +39,74 @@ export function DraggableTextLayer({
   onDuplicate,
   onBringForward,
   onSendBackward,
+  otherLayers,
+  onSnapChange,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
-  const editRef = useRef<HTMLDivElement>(null);
-  const [editing, setEditing] = useState(false);
 
   const { startMove, startRotate, liveRotation } = useCanvasTransform({
     containerRef,
     x: layer.x,
     y: layer.y,
     rotation: layer.rotation,
+    otherLayers,
     onUpdate: (patch) => onUpdate(patch),
+    onSnapChange,
   });
 
   const { menu, open: openMenu, close: closeMenu } = useContextMenu();
 
   const pointer = usePointerInteraction({
-    disabled: editing,
     onClick: () => {
-      if (!isActive) onSelect(layer.id);
+      if (isActive) onDeselect();
+      else onSelect(layer.id);
     },
     onDragStart: (e) => {
-      if (!isActive) onSelect(layer.id);
-      if (rootRef.current) startMove(e, rootRef.current);
+      if (!isActive) {
+        onSelect(layer.id);
+        if (rootRef.current) startMove(e, rootRef.current);
+        return;
+      }
+      // If already active, only move if dragging from the designated handle
+      const isHandle = (e.target as HTMLElement).closest('[data-drag-handle]');
+      if (isHandle && rootRef.current) {
+        startMove(e, rootRef.current);
+      }
     },
     onLongPress: (e) => {
       openMenu(e as any);
     }
   });
 
-  const syncSelection = useCallback(() => {
-    if (!isActive || editing) return;
-    const range = getCharRangeFromSelection(textRef.current);
-    if (range) onSelectionChange(range.start, range.end);
-  }, [isActive, editing, onSelectionChange]);
-
-  useEffect(() => {
-    document.addEventListener('selectionchange', syncSelection);
-    return () => document.removeEventListener('selectionchange', syncSelection);
-  }, [syncSelection]);
-
-  useEffect(() => {
-    if (editing && editRef.current) {
-      editRef.current.focus();
-      const range = document.createRange();
-      range.selectNodeContents(editRef.current);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-    }
-  }, [editing]);
+  const pointerEventsProps = isActive ? {} : {
+    onPointerDown: pointer.onPointerDown,
+    onPointerMove: pointer.onPointerMove,
+    onPointerUp: pointer.onPointerUp,
+    onTouchStart: pointer.onTouchStart,
+    onTouchMove: pointer.onTouchMove,
+    onTouchEnd: pointer.onTouchEnd,
+  };
 
   useEffect(() => {
     if (!isActive) {
-      setEditing(false);
       window.getSelection()?.removeAllRanges();
     }
   }, [isActive]);
 
-  const commitEdit = useCallback(() => {
-    const el = editRef.current;
-    if (!el) return;
-    const newText = el.innerText.replace(/[\n\u00A0]/g, ' ');
-    const oldChars = layer.chars;
-    const base = oldChars[0];
-    const globalFromChar: GlobalStyle = base
-      ? {
-          strokeWidth: base.strokeWidth,
-          strokeColor: base.strokeColor,
-          shadowBlur: base.shadowBlur,
-          shadowColor: base.shadowColor,
-          shadowOffsetX: base.shadowOffsetX,
-          shadowOffsetY: base.shadowOffsetY,
-          textTransform: base.textTransform,
-          fontSize: base.fontSize,
-          fontFamily: base.fontFamily,
-          color: base.color,
-        }
-      : DEFAULT_GLOBAL;
-    const next = textToChars(newText, globalFromChar).map((c, i) =>
-      oldChars[i] ? { ...c, ...oldChars[i], char: c.char } : c
-    );
-    onCharsChange(next);
-    setEditing(false);
-  }, [layer.chars, onCharsChange]);
-
   const menuItems = [
-    { label: 'Edit Text', onClick: () => setEditing(true) },
     { label: 'Duplicate', onClick: onDuplicate },
     { label: 'Bring Forward', onClick: onBringForward },
     { label: 'Send Backward', onClick: onSendBackward },
     { divider: true, label: '', onClick: () => {} },
     { label: 'Delete', onClick: onRemove, danger: true },
   ];
+
+  const baseChar = layer.chars[0] || {
+    ...DEFAULT_GLOBAL,
+    char: '',
+  };
+  const baseStyle = charToCss(baseChar as CharStyle);
 
   return (
     <>
@@ -146,66 +123,42 @@ export function DraggableTextLayer({
         onContextMenu={(e) => {
           if (!('touches' in e)) openMenu(e); // Only use native contextmenu for mouse
         }}
-        onPointerDown={(e) => {
-          if ((e.target as HTMLElement).closest('[data-handle]')) return;
-          pointer.onPointerDown(e);
-        }}
-        onPointerMove={(e) => {
-          if ((e.target as HTMLElement).closest('[data-handle]')) return;
-          pointer.onPointerMove(e);
-        }}
-        onPointerUp={pointer.onPointerUp}
-        onTouchStart={(e) => {
-          if ((e.target as HTMLElement).closest('[data-handle]')) return;
-          pointer.onTouchStart(e);
-        }}
-        onTouchMove={(e) => {
-          if ((e.target as HTMLElement).closest('[data-handle]')) return;
-          pointer.onTouchMove(e);
-        }}
-        onTouchEnd={pointer.onTouchEnd}
-        onDoubleClick={(e) => {
-          if ((e.target as HTMLElement).closest('[data-handle]')) return;
-          if (isActive) setEditing(true);
-        }}
+        {...pointerEventsProps}
       >
         <TransformFrame
-          isActive={isActive && !editing}
+          isActive={isActive}
           rotation={layer.rotation}
           liveRotation={liveRotation}
           accentColor="#a78bfa"
           onRotateStart={(e) => rootRef.current && startRotate(e, rootRef.current)}
         >
+          {isActive && (
+            <div 
+              data-handle 
+              data-drag-handle 
+              className="absolute inset-0 z-0 cursor-move" 
+              onPointerDown={pointer.onPointerDown}
+            />
+          )}
           <div
-            ref={editing ? editRef : textRef}
-            contentEditable={editing}
-            suppressContentEditableWarning={editing}
-            className={`styled-text-layer whitespace-pre-wrap text-center ${
-              isActive && !editing ? 'cursor-text select-text' : ''
-            } ${editing ? 'min-w-[60px] cursor-text outline-none' : 'cursor-grab select-none'}`}
-            style={{ userSelect: isActive || editing ? 'text' : 'none' }}
-            onBlur={editing ? commitEdit : undefined}
-            onKeyDown={
-              editing
-                ? (e) => {
-                    if (e.key === 'Escape') {
-                      e.preventDefault();
-                      setEditing(false);
-                    }
-                  }
-                : undefined
-            }
+            ref={textRef}
+            data-placeholder="ENTER TEXT..."
+            className="styled-text-layer whitespace-pre-wrap text-center relative z-10 select-none cursor-grab"
+            style={{ 
+              ...baseStyle,
+              minHeight: '1em',
+              display: 'block',
+            }}
           >
             {layer.chars.map((c, i) => {
-              const isSelected = !editing && isActive && selection && i >= selection.start && i < selection.end;
+              const isSelected = isActive && selection && i >= selection.start && i < selection.end;
               return (
                 <span 
                   key={`${i}-${c.char}`} 
                   data-char-index={i} 
                   style={{
                     ...charToCss(c),
-                    backgroundColor: isSelected ? 'rgba(167, 139, 250, 0.5)' : undefined,
-                    outline: isSelected ? '2px solid rgba(167, 139, 250, 0.8)' : undefined,
+                    backgroundColor: isSelected ? 'rgba(167, 139, 250, 0.4)' : undefined,
                     borderRadius: isSelected ? '2px' : undefined
                   }}
                 >

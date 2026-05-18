@@ -9,6 +9,20 @@ export type FontFamily =
 
 export type TextTransform = 'none' | 'uppercase' | 'lowercase';
 
+export interface CanvasSize {
+  label: string;
+  width: number;
+  height: number;
+  ratio: string;
+}
+
+export const CANVAS_SIZES: CanvasSize[] = [
+  { label: 'YouTube / Desktop', width: 1920, height: 1080, ratio: '16:9' },
+  { label: 'TikTok / Shorts', width: 1080, height: 1920, ratio: '9:16' },
+  { label: 'Instagram Square', width: 1080, height: 1080, ratio: '1:1' },
+  { label: 'Facebook / Twitter', width: 1200, height: 630, ratio: '1.91:1' },
+];
+
 export interface CharStyle {
   char: string;
   fontFamily: FontFamily;
@@ -119,6 +133,51 @@ export function createChar(
 
 export function textToChars(text: string, global: GlobalStyle = DEFAULT_GLOBAL): CharStyle[] {
   return text.split('').map((c) => createChar(c, {}, global));
+}
+
+export function rebuildCharsWithExistingStyle(
+  newText: string,
+  oldChars: CharStyle[]
+): CharStyle[] {
+  const textToProcess = newText;
+  const base = oldChars[0] || DEFAULT_GLOBAL;
+  
+  // If text was totally cleared or is brand new, start with base styles
+  if (oldChars.length === 0) {
+    return textToChars(textToProcess, base as GlobalStyle);
+  }
+
+  // Simple heuristic: if lengths are same, preserve styles 1:1
+  if (newText.length === oldChars.length) {
+    return textToChars(textToProcess, base as GlobalStyle).map((c, i) => ({
+      ...oldChars[i],
+      char: c.char
+    }));
+  }
+
+  // If text is growing/shrinking, try to preserve the most common style 
+  // or the style at the point of change. For simplicity in this generator,
+  // we use the base style of the first character for new additions.
+  const globalFromChar: GlobalStyle = {
+    strokeWidth: base.strokeWidth,
+    strokeColor: base.strokeColor,
+    shadowBlur: base.shadowBlur,
+    shadowColor: base.shadowColor,
+    shadowOffsetX: base.shadowOffsetX,
+    shadowOffsetY: base.shadowOffsetY,
+    textTransform: base.textTransform,
+    fontSize: base.fontSize,
+    fontFamily: base.fontFamily,
+    color: base.color,
+  };
+
+  return textToChars(textToProcess, globalFromChar).map((c, i) => {
+    // If we have an old char at this index, keep its unique style (like custom colors per letter)
+    if (oldChars[i]) {
+      return { ...oldChars[i], char: c.char };
+    }
+    return c;
+  });
 }
 
 export function charsToText(chars: CharStyle[]): string {

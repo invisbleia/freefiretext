@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useCallback } from 'react';
 import { CanvasPreview } from './components/CanvasPreview';
 import { EmojiPanel } from './components/EmojiPanel';
 import { ExportButton } from './components/ExportButton';
@@ -7,6 +7,7 @@ import { PresetBar } from './components/PresetBar';
 import { StylePanel } from './components/StylePanel';
 import { useTextEditor } from './hooks/useTextEditor';
 import type { BackgroundMode } from './types';
+import { rebuildCharsWithExistingStyle } from './types';
 
 function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -16,6 +17,12 @@ function App() {
     if (!editor.selection || !editor.activeLayer) return [];
     return editor.activeLayer.chars.slice(editor.selection.start, editor.selection.end);
   }, [editor.selection, editor.activeLayer]);
+
+  const handleTextChange = useCallback((text: string) => {
+    if (!editor.activeLayerId || !editor.activeLayer) return;
+    const next = rebuildCharsWithExistingStyle(text, editor.activeLayer.chars);
+    editor.updateTextLayerChars(editor.activeLayerId, next);
+  }, [editor.activeLayerId, editor.activeLayer, editor.updateTextLayerChars]);
 
   return (
     <div className="min-h-screen select-none bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
@@ -52,11 +59,12 @@ function App() {
       </header>
 
       <main className="mx-auto grid max-w-[1600px] gap-4 p-4 lg:grid-cols-[300px_1fr_minmax(260px,340px)]">
-        <aside className="flex flex-col gap-4 overflow-y-auto lg:max-h-[calc(100vh-88px)]">
+        <aside className="side-panel flex flex-col gap-4 overflow-y-auto lg:max-h-[calc(100vh-88px)]">
           <LayersPanel
             layers={editor.sortedLayers}
             activeTextId={editor.activeLayerId}
             activeEmojiId={editor.activeEmojiId}
+            canvasSize={editor.canvasSize}
             onSelectText={editor.selectTextLayer}
             onSelectEmoji={editor.selectEmoji}
             onAddText={editor.addTextLayer}
@@ -65,21 +73,35 @@ function App() {
             onBringForward={editor.bringForward}
             onSendBackward={editor.sendBackward}
             onAlign={editor.alignActive}
+            onCanvasSizeChange={editor.setCanvasSize}
           />
           <PresetBar activePreset={editor.activePreset} onLoad={editor.loadPreset} />
           <StylePanel
             global={editor.global}
-            onGlobalChange={(patch) => editor.setGlobal((g) => ({ ...g, ...patch }))}
+            onGlobalChange={(patch) => {
+              editor.setGlobal((g) => ({ ...g, ...patch }));
+              if (editor.activeLayerId) {
+                editor.applyToSelection(patch);
+              }
+            }}
             selection={editor.selection}
             selectedChars={selectedChars}
             onApplyToSelection={editor.applyToSelection}
             onApplyGlobalToAll={editor.applyGlobalToAll}
             activeLayerRotation={editor.activeLayerRotation}
             activeEmojiRotation={editor.activeEmojiRotation}
+            activeEmojiX={editor.activeEmojiX}
+            activeEmojiY={editor.activeEmojiY}
+            activeEmojiWidth={editor.activeEmojiWidth}
+            activeEmojiHeight={editor.activeEmojiHeight}
             hasActiveLayer={!!editor.activeLayerId}
             hasActiveEmoji={!!editor.activeEmojiId}
+            activeLayer={editor.activeLayer}
             onLayerRotationChange={editor.setActiveLayerRotation}
             onEmojiRotationChange={editor.setActiveEmojiRotation}
+            onEmojiUpdate={(patch) => editor.activeEmojiId && editor.updateEmoji(editor.activeEmojiId, patch)}
+            onTextChange={handleTextChange}
+            onSelectionChange={editor.setSelection}
           />
         </aside>
 
@@ -91,6 +113,7 @@ function App() {
             selection={editor.selection}
             background={editor.background}
             bloodSplatter={editor.bloodSplatter}
+            canvasSize={editor.canvasSize}
             onSelectTextLayer={editor.selectTextLayer}
             onSelectEmoji={editor.selectEmoji}
             onClearSelection={editor.clearCanvasSelection}
@@ -106,10 +129,14 @@ function App() {
             onSendBackward={editor.sendBackward}
             canvasRef={canvasRef}
           />
-          <ExportButton canvasRef={canvasRef} onDeselect={editor.clearCanvasSelection} />
+          <ExportButton 
+            canvasRef={canvasRef} 
+            onDeselect={editor.clearCanvasSelection}
+            canvasSize={editor.canvasSize}
+          />
         </section>
 
-        <aside className="flex min-h-[calc(100vh-88px)] flex-col lg:sticky lg:top-[72px] lg:self-start">
+        <aside className="side-panel flex min-h-[calc(100vh-88px)] flex-col lg:sticky lg:top-[72px] lg:self-start">
           <EmojiPanel onAdd={editor.addEmoji} />
         </aside>
       </main>

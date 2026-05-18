@@ -1,9 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
-import type { BackgroundMode, CharStyle, EmojiItem, GlobalStyle, TextLayer } from '../types';
+import type {
+  BackgroundMode,
+  CharStyle,
+  EmojiItem,
+  GlobalStyle,
+  TextLayer,
+  CanvasSize,
+} from '../types';
 import {
   applyStyleToRange,
   DEFAULT_GLOBAL,
   textToChars,
+  CANVAS_SIZES,
 } from '../types';
 import { normalizeSelectionRange, clearBrowserSelection } from '../utils/selection';
 import { PRESETS } from '../presets';
@@ -51,10 +59,8 @@ function alignPos(align: Align): Partial<{ x: number; y: number }> {
 }
 
 export function useTextEditor() {
-  const [textLayers, setTextLayers] = useState<TextLayer[]>(() => [
-    createTextLayer('POV: FINDING GOLD PLAYER', DEFAULT_GLOBAL),
-  ]);
-  const [activeLayerId, setActiveLayerId] = useState<string | null>(() => null);
+  const [textLayers, setTextLayers] = useState<TextLayer[]>([]);
+  const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [activeEmojiId, setActiveEmojiId] = useState<string | null>(null);
   const [global, setGlobal] = useState<GlobalStyle>(DEFAULT_GLOBAL);
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
@@ -62,6 +68,7 @@ export function useTextEditor() {
   const [background, setBackground] = useState<BackgroundMode>('transparent');
   const [bloodSplatter, setBloodSplatter] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [canvasSize, setCanvasSize] = useState<CanvasSize>(CANVAS_SIZES[0]);
 
   const activeLayer = useMemo(
     () => (activeLayerId ? textLayers.find((l) => l.id === activeLayerId) ?? null : null),
@@ -84,7 +91,8 @@ export function useTextEditor() {
       setTextLayers((layers) =>
         layers.map((layer) => {
           if (layer.id !== activeLayerId) return layer;
-          if (!selection) {
+          // If no selection range is active, apply to all characters in the layer
+          if (!selection || selection.start === selection.end) {
             return { ...layer, chars: layer.chars.map((c) => ({ ...c, ...patch })) };
           }
           return {
@@ -120,8 +128,8 @@ export function useTextEditor() {
     );
   }, [activeLayerId, global]);
 
-  const updateSelection = useCallback((start: number, end: number) => {
-    setSelection(normalizeSelectionRange(start, end));
+  const updateSelection = useCallback((range: { start: number; end: number } | null) => {
+    setSelection(range);
   }, []);
 
   const selectTextLayer = useCallback((id: string) => {
@@ -165,10 +173,7 @@ export function useTextEditor() {
   }, []);
 
   const removeTextLayer = useCallback((id: string) => {
-    setTextLayers((prev) => {
-      const next = prev.filter((l) => l.id !== id);
-      return next.length ? next : [createTextLayer('NEW TEXT', DEFAULT_GLOBAL)];
-    });
+    setTextLayers((prev) => prev.filter((l) => l.id !== id));
     setActiveLayerId((current) => (current === id ? null : current));
     setSelection(null);
   }, []);
@@ -339,9 +344,6 @@ export function useTextEditor() {
     [global]
   );
 
-  const activeLayerRotation = activeLayer?.rotation ?? 0;
-  const activeEmoji = emojis.find((e) => e.id === activeEmojiId);
-
   const setActiveLayerRotation = useCallback(
     (rotation: number) => {
       if (!activeLayerId) return;
@@ -358,31 +360,41 @@ export function useTextEditor() {
     [activeEmojiId, updateEmoji]
   );
 
+  const activeLayerRotation = activeLayer?.rotation ?? 0;
+  const activeEmoji = emojis.find((e) => e.id === activeEmojiId);
+  const activeEmojiRotation = activeEmoji?.rotation ?? 0;
+  const activeEmojiX = activeEmoji?.x ?? 50;
+  const activeEmojiY = activeEmoji?.y ?? 50;
+  const activeEmojiWidth = activeEmoji?.width ?? 100;
+  const activeEmojiHeight = activeEmoji?.height ?? 100;
+
   return {
     textLayers,
-    sortedLayers,
-    activeLayer,
     activeLayerId,
-    editingLayerId,
     activeEmojiId,
+    activeLayer,
     activeEmoji,
     global,
-    setGlobal,
     selection,
+    emojis,
+    background,
+    bloodSplatter,
+    activePreset,
+    sortedLayers,
+    activeLayerRotation,
+    activeEmojiRotation,
+    activeEmojiX,
+    activeEmojiY,
+    activeEmojiWidth,
+    activeEmojiHeight,
+    canvasSize,
+    setCanvasSize,
+    setGlobal,
     setSelection: updateSelection,
+    setBackground,
+    setBloodSplatter,
     applyToSelection,
     applyGlobalToAll,
-    emojis,
-    addEmoji,
-    updateEmoji,
-    removeEmoji,
-    duplicateEmoji,
-    background,
-    setBackground,
-    bloodSplatter,
-    setBloodSplatter,
-    activePreset,
-    loadPreset,
     selectTextLayer,
     selectEmoji,
     clearCanvasSelection,
@@ -391,11 +403,14 @@ export function useTextEditor() {
     updateTextLayerChars,
     removeTextLayer,
     duplicateTextLayer,
+    addEmoji,
+    updateEmoji,
+    removeEmoji,
+    duplicateEmoji,
     bringForward,
     sendBackward,
     alignActive,
-    activeLayerRotation,
-    activeEmojiRotation: activeEmoji?.rotation ?? 0,
+    loadPreset,
     setActiveLayerRotation,
     setActiveEmojiRotation,
   };

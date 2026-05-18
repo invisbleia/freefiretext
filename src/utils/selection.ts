@@ -18,6 +18,9 @@ export function getCharRangeFromSelection(
 
   const lo = Math.min(anchor, focus);
   const hi = Math.max(anchor, focus);
+  
+  if (lo === hi && sel.isCollapsed) return null;
+  
   return { start: lo, end: hi + 1 };
 }
 

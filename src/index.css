@@ -1,11 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Permanent+Marker&family=Road+Rage&display=swap');
 @import 'tailwindcss';
-
-@font-face {
-  font-family: 'Road Rage';
-  src: url('https://cdn.jsdelivr.net/gh/googlefonts/rubik-dirt@main/fonts/RubikDirt-Regular.ttf')
-    format('truetype');
-  font-display: swap;
-}
 
 @theme {
   --font-bebas: 'Bebas Neue', sans-serif;
@@ -90,6 +84,13 @@ textarea::selection,
 .styled-text-layer ::-moz-selection {
   background: rgba(59, 130, 246, 0.45);
   color: inherit;
+}
+
+[data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+  font-style: italic;
 }
 
 [data-handle] {
