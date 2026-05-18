@@ -1,0 +1,109 @@
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'Road Rage';
+  src: url('https://cdn.jsdelivr.net/gh/googlefonts/rubik-dirt@main/fonts/RubikDirt-Regular.ttf')
+    format('truetype');
+  font-display: swap;
+}
+
+@theme {
+  --font-bebas: 'Bebas Neue', sans-serif;
+  --font-impact: Impact, 'Arial Black', sans-serif;
+  --font-anton: 'Anton', sans-serif;
+  --font-road-rage: 'Road Rage', 'Permanent Marker', cursive;
+  --font-marker: 'Permanent Marker', cursive;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 3px;
+}
+
+.checkerboard {
+  background-image:
+    linear-gradient(45deg, rgba(100, 116, 139, 0.15) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(100, 116, 139, 0.15) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(100, 116, 139, 0.15) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(100, 116, 139, 0.15) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.preview-transparent {
+  background: transparent;
+}
+
+.preview-grid {
+  background-image:
+    radial-gradient(circle, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+  background-size: 12px 12px;
+  background-color: transparent;
+}
+
+.gaming-bg {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(239, 68, 68, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(34, 211, 238, 0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 60% 80%, rgba(234, 179, 8, 0.1) 0%, transparent 40%),
+    linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #0f172a 100%);
+}
+
+.blood-splatter::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle at 30% 60%, rgba(220, 38, 38, 0.35) 0%, transparent 35%),
+    radial-gradient(circle at 70% 40%, rgba(127, 29, 29, 0.4) 0%, transparent 30%),
+    radial-gradient(circle at 50% 80%, rgba(185, 28, 28, 0.25) 0%, transparent 25%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+textarea::selection,
+.styled-text-layer ::selection {
+  background: rgba(59, 130, 246, 0.45);
+  color: inherit;
+}
+
+.styled-text-layer ::-moz-selection {
+  background: rgba(59, 130, 246, 0.45);
+  color: inherit;
+}
+
+[data-handle] {
+  cursor: grab;
+}
+
+[data-handle]:active {
+  cursor: grabbing;
+}
+
+.is-exporting [data-ui-only] {
+  display: none !important;
+}
+
+.is-exporting [data-handle] {
+  display: none !important;
+}
