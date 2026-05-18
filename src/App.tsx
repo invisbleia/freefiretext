@@ -62,17 +62,11 @@ function App() {
         <aside className="side-panel flex flex-col gap-4 overflow-y-auto lg:max-h-[calc(100vh-88px)]">
           <LayersPanel
             layers={editor.sortedLayers}
-            activeTextId={editor.activeLayerId}
-            activeEmojiId={editor.activeEmojiId}
+            activeId={editor.activeLayerId || editor.activeEmojiId}
             canvasSize={editor.canvasSize}
-            onSelectText={editor.selectTextLayer}
-            onSelectEmoji={editor.selectEmoji}
+            onSelect={(kind, id) => (kind === 'text' ? editor.selectTextLayer(id) : editor.selectEmoji(id))}
+            onRemove={(kind, id) => (kind === 'text' ? editor.removeTextLayer(id) : editor.removeEmoji(id))}
             onAddText={editor.addTextLayer}
-            onDeleteText={editor.removeTextLayer}
-            onDeleteEmoji={editor.removeEmoji}
-            onBringForward={editor.bringForward}
-            onSendBackward={editor.sendBackward}
-            onAlign={editor.alignActive}
             onCanvasSizeChange={editor.setCanvasSize}
           />
           <PresetBar activePreset={editor.activePreset} onLoad={editor.loadPreset} />

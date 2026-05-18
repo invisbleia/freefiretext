@@ -74,7 +74,6 @@ export function StylePanel({
   activeEmojiX,
   activeEmojiY,
   activeEmojiWidth,
-  activeEmojiHeight,
   hasActiveLayer,
   hasActiveEmoji,
   activeLayer,

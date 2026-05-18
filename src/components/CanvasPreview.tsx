@@ -93,7 +93,7 @@ export function CanvasPreview({
         }
       }
 
-      if (e.key === 'Delete' && !e.target?.['isContentEditable']) {
+      if (e.key === 'Delete' && !(e.target instanceof HTMLElement && e.target.isContentEditable)) {
         if (activeLayerId) onTextLayerRemove(activeLayerId);
         else if (activeEmojiId) onEmojiRemove(activeEmojiId);
       }

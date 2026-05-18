@@ -7,13 +7,8 @@ import type {
   TextLayer,
   CanvasSize,
 } from '../types';
-import {
-  applyStyleToRange,
-  DEFAULT_GLOBAL,
-  textToChars,
-  CANVAS_SIZES,
-} from '../types';
-import { normalizeSelectionRange, clearBrowserSelection } from '../utils/selection';
+import { applyStyleToRange, DEFAULT_GLOBAL, textToChars, CANVAS_SIZES } from '../types';
+import { clearBrowserSelection } from '../utils/selection';
 import { PRESETS } from '../presets';
 import type { LayerEntry } from '../components/LayersPanel';
 
@@ -75,14 +70,12 @@ export function useTextEditor() {
     [textLayers, activeLayerId]
   );
 
-  const editingLayerId = activeLayerId;
-
   const sortedLayers = useMemo((): LayerEntry[] => {
     const entries: LayerEntry[] = [
-      ...textLayers.map((item) => ({ kind: 'text' as const, item })),
-      ...emojis.map((item) => ({ kind: 'emoji' as const, item })),
+      ...textLayers.map((item) => ({ kind: 'text' as const, item, zIndex: item.zIndex })),
+      ...emojis.map((item) => ({ kind: 'emoji' as const, item, zIndex: item.zIndex })),
     ];
-    return entries.sort((a, b) => a.item.zIndex - b.item.zIndex);
+    return entries.sort((a, b) => a.zIndex - b.zIndex);
   }, [textLayers, emojis]);
 
   const applyToSelection = useCallback(

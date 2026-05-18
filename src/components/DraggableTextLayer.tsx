@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CharStyle, GlobalStyle, TextLayer } from '../types';
-import { charToCss, DEFAULT_GLOBAL, getCharDisplay, rebuildCharsWithExistingStyle, textToChars } from '../types';
+import { useEffect, useRef } from 'react';
+import type { CharStyle, TextLayer } from '../types';
+import { charToCss, DEFAULT_GLOBAL, getCharDisplay } from '../types';
 import { useCanvasTransform } from '../hooks/useCanvasTransform';
 import { useContextMenu, usePointerInteraction } from '../hooks/usePointerInteraction';
-import { getCharRangeFromSelection } from '../utils/selection';
 import { TransformFrame } from './TransformFrame';
 import { ContextMenu } from './ContextMenu';
 
@@ -32,9 +31,7 @@ export function DraggableTextLayer({
   containerRef,
   onSelect,
   onDeselect,
-  onSelectionChange,
   onUpdate,
-  onCharsChange,
   onRemove,
   onDuplicate,
   onBringForward,

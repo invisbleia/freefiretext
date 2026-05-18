@@ -2,13 +2,6 @@ import { useCallback, useState } from 'react';
 import { toPng } from 'html-to-image';
 import { clearBrowserSelection } from '../utils/selection';
 
-const EXPORT_SIZES = [
-  { label: '1280 × 720 (HD)', width: 1280, height: 720 },
-  { label: '1920 × 1080 (FHD)', width: 1920, height: 1080 },
-  { label: '1080 × 1080 (Square)', width: 1080, height: 1080 },
-  { label: '854 × 480 (SD)', width: 854, height: 480 },
-];
-
 interface Props {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onDeselect: () => void;

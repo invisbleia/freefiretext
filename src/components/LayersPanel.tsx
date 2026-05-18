@@ -24,8 +24,6 @@ export function LayersPanel({
   onAddText,
   onCanvasSizeChange,
 }: Props) {
-  const hasSelection = activeId !== null;
-
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-slate-700/60 bg-slate-900/80 p-4">
       <div>
